@@ -1,0 +1,385 @@
+---
+title: "Guava Accessions Analysis"
+subtitle: "Exploratory Data Analysis and Statistical Comparison"
+author: "Data Analytics Portfolio Project"
+date: "October 2026"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  comment = NA
+)
+```
+
+# Introduction
+
+This project explores quantitative and qualitative fruit characteristics across three simulated guava accessions. The analysis demonstrates a practical workflow for data preparation, exploratory data analysis, visualization, and statistical testing using R.
+
+The project is inspired by an agricultural research workflow involving fruit characterization and accession comparison. However, all observations used in this project are simulated and do not represent actual experimental records.
+
+# Objectives
+
+The objectives are to:
+
+- Validate the dataset and calculate a derived fruit shape index.
+- Summarize fruit characteristics and compare descriptive statistics across accessions.
+- Explore relationships between numerical variables.
+- Evaluate whether mean Brix values differ across accessions using appropriate statistical tests.
+
+# Dataset Description
+
+The dataset contains 75 simulated fruit observations distributed equally across three accessions: A01, A02, and A03, with 25 observations per accession.
+
+Variables include fruit weight, length, width, peel color, Brix, firmness, and seed count. A fruit shape index is calculated as fruit length divided by fruit width.
+
+The data are intended for demonstration and learning purposes. Findings should not be interpreted as conclusions about real guava accessions or as evidence of genetic differences.
+
+# Data Preparation and Validation
+
+```{r setup-data, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Load the simulated guava dataset
+guava_data <- read.csv(file.choose())
+
+# Calculate data quality indicators
+total_observations <- nrow(guava_data)
+total_variables <- ncol(guava_data)
+missing_values <- sum(is.na(guava_data))
+duplicate_rows <- sum(duplicated(guava_data))
+duplicate_ids <- sum(duplicated(guava_data$fruit_id))
+```
+
+This project uses a simulated dataset of guava fruit measurements across three accessions. The dataset was prepared for portfolio demonstration and does not contain original research records.
+
+Data quality checks were performed to assess dataset completeness and consistency before conducting the statistical analysis.
+
+```{r data-quality, echo=FALSE}
+data.frame(
+  Metric = c(
+    "Observations",
+    "Variables",
+    "Missing values",
+    "Duplicate rows",
+    "Duplicate fruit IDs"
+  ),
+  Result = c(
+    total_observations,
+    total_variables,
+    missing_values,
+    duplicate_rows,
+    duplicate_ids
+  )
+)
+```
+
+# Exploratory Data Analysis
+
+An additional quantitative variable, the fruit shape index, was calculated as fruit length divided by fruit width. This derived measure was included to explore fruit proportions and relationships among numerical traits.
+
+```{r, include=FALSE}
+# Calculate fruit shape index
+guava_data$fruit_shape_index <-
+  guava_data$fruit_length_cm / guava_data$fruit_width_cm
+```
+
+## Descriptive Statistics
+
+```{r, echo=FALSE}
+# Select key quantitative variables
+descriptive_data <- guava_data[, c(
+  "fruit_weight_g",
+  "fruit_length_cm",
+  "fruit_width_cm",
+  "brix",
+  "firmness_kgf_cm2",
+  "seed_count",
+  "fruit_shape_index"
+)]
+
+# Generate descriptive statistics
+descriptive_stats <- data.frame(
+  Variable = names(descriptive_data),
+row.names = NULL,
+  Mean = sapply(descriptive_data, mean, na.rm = TRUE),
+  Median = sapply(descriptive_data, median, na.rm = TRUE),
+  SD = sapply(descriptive_data, sd, na.rm = TRUE),
+  Minimum = sapply(descriptive_data, min, na.rm = TRUE),
+  Maximum = sapply(descriptive_data, max, na.rm = TRUE)
+)
+
+# Round numerical results
+descriptive_stats[, -1] <- round(descriptive_stats[, -1], 2)
+
+rownames(descriptive_stats) <- NULL
+
+knitr::kable(
+  descriptive_stats,
+  digits = 2,
+  caption = "Descriptive Statistics of Guava Fruit Traits"
+)
+```
+
+## Comparison of Accession Means
+
+```{r, echo=FALSE}
+# Calculate mean values for each accession
+accession_means <- aggregate(
+  cbind(
+    fruit_weight_g,
+    fruit_length_cm,
+    fruit_width_cm,
+    brix
+  ) ~ accession,
+  data = guava_data,
+  FUN = mean
+)
+
+# Round numerical results
+accession_means[, -1] <- round(accession_means[, -1], 2)
+
+# Display formatted table
+knitr::kable(
+  accession_means,
+  digits = 2,
+  col.names = c(
+    "Accession",
+    "Mean Weight (g)",
+    "Mean Length (cm)",
+    "Mean Width (cm)",
+    "Mean Brix (°Bx)"
+  ),
+  caption = "Mean Fruit Characteristics by Accession",
+  row.names = FALSE
+)
+```
+
+## Brix Distribution
+
+```{r, fig.width=6, fig.height=3.5}
+# Compare Brix values across accessions
+boxplot(
+  brix ~ accession,
+  data = guava_data,
+  main = "Brix Distribution Across Guava Accessions",
+  xlab = "Accession",
+  ylab = "Brix (°Bx)",
+ col = c("#4393C3", "#FDDBC7", "#D6604D"),
+border = c("#2166AC", "#E8B99F", "#B2182B"),
+  medcol = "#333333",
+  whiskcol = "#555555",
+  staplecol = "#555555",
+  outcol = "#555555",
+  outpch = 16,
+  frame.plot = FALSE
+)
+```
+
+# Statistical Analysis
+
+## Classical One-Way ANOVA
+
+```{r, echo=FALSE}
+# Compare mean Brix across accessions using classical ANOVA
+brix_anova <- aov(brix ~ accession, data = guava_data)
+
+summary(brix_anova)
+```
+
+## ANOVA Assumption Checks
+
+```{r, echo=FALSE, fig.width=6.5, fig.height=4.5}
+# Check normality of ANOVA residuals
+shapiro.test(residuals(brix_anova))
+
+# Display diagnostic plots
+par(mfrow = c(2, 2))
+plot(brix_anova, col.lines = "#E9A15B")
+par(mfrow = c(1, 1))
+```
+
+```{r, echo=FALSE}
+# Check homogeneity of variances
+bartlett.test(brix ~ accession, data = guava_data)
+```
+
+The Shapiro-Wilk test did not provide evidence against the normality of the ANOVA residuals (p = 0.5429). However, Bartlett’s test indicated unequal variances across accessions (p = 0.0237). Therefore, Welch’s ANOVA was selected as the primary overall comparison.
+
+## Welch's ANOVA
+
+```{r, echo=FALSE}
+# Compare mean Brix across accessions without assuming equal variances
+welch_anova <- oneway.test(
+  brix ~ accession,
+  data = guava_data,
+  var.equal = FALSE
+)
+
+welch_anova
+```
+
+## Post-hoc Comparisons
+
+```{r, echo=FALSE}
+# Perform Tukey HSD pairwise comparisons
+tukey_results <- TukeyHSD(brix_anova)
+
+# Convert results into a data frame
+tukey_table <- as.data.frame(tukey_results$accession)
+
+# Add comparison names as a column
+tukey_table$Comparison <- rownames(tukey_table)
+
+# Reorder columns
+tukey_table <- tukey_table[, c(
+  "Comparison",
+  "diff",
+  "lwr",
+  "upr",
+  "p adj"
+)]
+
+# Display formatted results
+knitr::kable(
+  tukey_table,
+  digits = 3,
+  col.names = c(
+    "Comparison",
+    "Mean Difference",
+    "CI Lower",
+    "CI Upper",
+    "Adjusted p-value"
+  ),
+  caption = "Tukey HSD Pairwise Comparisons",
+  row.names = FALSE
+)
+```
+
+Tukey HSD is presented as a reference comparison under the equal-variance assumption. Given the evidence of unequal variances, Games–Howell is considered more appropriate for pairwise comparisons.
+
+```{r, echo=FALSE}
+# Perform Games-Howell pairwise comparisons
+games_howell_results <- rstatix::games_howell_test(
+  guava_data,
+  brix ~ accession
+)
+
+# Select relevant columns for reporting
+games_howell_table <- games_howell_results[, c(
+  "group1",
+  "group2",
+  "estimate",
+  "conf.low",
+  "conf.high",
+  "p.adj",
+  "p.adj.signif"
+)]
+
+# Display formatted results
+knitr::kable(
+  games_howell_table,
+  digits = 3,
+  col.names = c(
+    "Group 1",
+    "Group 2",
+    "Mean Difference",
+    "CI Lower",
+    "CI Upper",
+    "Adjusted p-value",
+    "Significance"
+  ),
+  caption = "Games-Howell Pairwise Comparisons",
+  row.names = FALSE
+)
+```
+
+# Correlation Analysis
+
+```{r, include=FALSE, fig.width=6, fig.height=3.5}
+# Select numeric variables for correlation analysis
+numeric_data <- guava_data[, c(
+  "fruit_weight_g",
+  "fruit_length_cm",
+  "fruit_width_cm",
+  "brix",
+  "firmness_kgf_cm2",
+  "seed_count",
+  "fruit_shape_index"
+)]
+```
+
+
+```{r, fig.width=9, fig.height=8}
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(
+  numeric_data,
+  use = "complete.obs"
+)
+
+# Create shorter labels for the plot
+short_labels <- c(
+  "Weight",
+  "Length",
+  "Width",
+  "Brix",
+  "Firmness",
+  "Seeds",
+  "Shape"
+)
+
+# Apply short labels to the correlation matrix
+dimnames(correlation_matrix) <- list(
+  short_labels,
+  short_labels
+)
+
+# Visualize the correlations
+corrplot::corrplot(
+  correlation_matrix,
+  method = "color",
+  type = "upper",
+  addCoef.col = "black",
+  tl.col = "black",
+  tl.srt = 0,
+  tl.cex = 1.2,
+  cl.cex = 1.1,
+  number.cex = 1.1,
+  diag = FALSE,
+  mar = c(0, 0, 2, 0)
+)
+```
+
+# Conclusions and Recommendations
+
+## Key Findings
+
+The descriptive analysis revealed differences in fruit characteristics across the three simulated guava accessions. A01 had the highest average fruit weight (180.45 g), while A02 showed the highest average Brix value (11.92 °Bx). These results illustrate that accessions can differ across traits, and that no single accession necessarily performs best across every characteristic.
+
+The correlation analysis identified moderate positive relationships between fruit weight and both fruit length (r = 0.582) and fruit width (r = 0.597). A moderate negative relationship was observed between fruit weight and Brix (r = -0.340). These patterns describe associations within the simulated dataset and should not be interpreted as evidence of causation.
+
+## Statistical Assessment
+
+The initial classical ANOVA suggested a potential difference in mean Brix values. However, Bartlett’s test provided evidence of unequal group variances (p = 0.0237).
+
+Given the evidence of unequal variances, the Games–Howell procedure was used for pairwise comparisons because it does not assume equal group variances.
+
+Therefore, Welch’s ANOVA was used as the more appropriate overall comparison. Its result was not statistically significant at the 0.05 level (p = 0.0968). Games–Howell pairwise comparisons also found no statistically significant differences between accessions.
+
+Consequently, the analysis does not provide sufficient statistical evidence to conclude that mean Brix differs across the three accessions. This does not prove that the accessions are identical; further evaluation with additional data may be warranted.
+
+## Recommendations and Limitations
+
+For a real agricultural research study, the next step would be to collect additional observations under controlled and documented conditions and validate whether the observed patterns persist. Accession selection should consider multiple traits and research objectives rather than relying on a single measurement.
+
+This project uses simulated data created for analytical demonstration. Its findings are intended to illustrate data validation, exploratory analysis, correlation assessment, and statistical testing in R. They do not represent experimentally confirmed differences among real guava accessions.
