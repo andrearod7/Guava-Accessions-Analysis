@@ -2,6 +2,8 @@
 
 ![Guava Accessions Analysis](Dashboard.png)
 
+Tools: R | R Markdown
+
 ## 1. Project Overview
 
 This project explores fruit characteristics across three simulated guava accessions using R. The analysis focuses on understanding variation in physical and quality-related traits and comparing their average values.
